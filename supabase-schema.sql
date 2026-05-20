@@ -364,6 +364,15 @@ CREATE TABLE IF NOT EXISTS plaid_accounts (
   mask TEXT
 );
 
+CREATE TABLE IF NOT EXISTS google_calendar_connections (
+  user_id UUID REFERENCES profiles PRIMARY KEY,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMPTZ,
+  email TEXT,
+  connected_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS briefing_settings (
   user_id UUID REFERENCES profiles PRIMARY KEY,
   phone_number TEXT NOT NULL,
@@ -406,6 +415,7 @@ ALTER TABLE whoop_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whoop_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plaid_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plaid_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE google_calendar_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE briefing_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users can only access their own data
@@ -424,7 +434,7 @@ BEGIN
     'meal_plans', 'nutrition_logs', 'budget_categories', 'expenses',
     'goals', 'medical_records', 'emergency_contacts', 'insurance_info',
     'home_items', 'maintenance_logs', 'whoop_metrics', 'whoop_connections',
-    'plaid_items', 'briefing_settings'
+    'plaid_items', 'briefing_settings', 'google_calendar_connections'
   ]
   LOOP
     EXECUTE format('CREATE POLICY "Users own their data" ON %I FOR ALL USING (user_id = auth.uid())', t);
@@ -447,3 +457,8 @@ CREATE POLICY "Users own goal milestones" ON goal_milestones
 
 CREATE POLICY "Users own plaid accounts" ON plaid_accounts
   FOR ALL USING (item_id IN (SELECT id FROM plaid_items WHERE user_id = auth.uid()));
+
+-- Add Google Calendar columns to events table (run separately if table already exists)
+ALTER TABLE events ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'local';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS google_event_id TEXT;
+ALTER TABLE events ADD CONSTRAINT events_google_event_id_user_unique UNIQUE (user_id, google_event_id);

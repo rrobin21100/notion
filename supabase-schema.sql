@@ -409,12 +409,16 @@ ALTER TABLE plaid_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE briefing_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users can only access their own data
+-- profiles uses 'id' as its user column (PK references auth.users), all others use 'user_id'
+CREATE POLICY "Users own their profile" ON profiles
+  FOR ALL USING (id = auth.uid());
+
 DO $$
 DECLARE
   t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'profiles', 'water_logs', 'medications', 'medication_logs',
+    'water_logs', 'medications', 'medication_logs',
     'supplements', 'supplement_logs', 'lab_results', 'workouts',
     'events', 'shopping_lists', 'pantry_items', 'habits', 'habit_logs',
     'meal_plans', 'nutrition_logs', 'budget_categories', 'expenses',
